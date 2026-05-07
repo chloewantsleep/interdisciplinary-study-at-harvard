@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, X, BookOpen, ChevronDown, ExternalLink, CheckCircle } from "lucide-react";
+import { Search, X, BookOpen, ChevronDown, ExternalLink, CheckCircle, LayoutGrid, Tag } from "lucide-react";
 import type { Course } from "@/lib/types";
 import { SCHOOL_COLORS, SCHOOL_FULL } from "@/lib/types";
 import { useSaved } from "@/lib/useSaved";
@@ -10,6 +10,34 @@ import { useTaken } from "@/lib/useTaken";
 
 const SEMESTERS = ["Fall", "Spring", "Summer", "Winter", "Fall-Spring", "Fall-Winter", "Winter-Spring"];
 const PAGE_SIZE = 30;
+
+const CLUSTER_COLORS: Record<string, string> = {
+  "Policy & Governance": "#3b82f6",
+  "Law & Justice": "#6366f1",
+  "Science & Tech": "#8b5cf6",
+  "Health": "#10b981",
+  "Arts & Culture": "#f59e0b",
+  "Design & Environment": "#84cc16",
+  "Society & Economics": "#f97316",
+  "Cross-cutting": "#ec4899",
+};
+
+const LABEL_CLUSTER: Record<string, string> = Object.fromEntries(
+  Object.entries({
+    "Policy & Governance": ["policy analysis","regulatory policy","public policy","governance","democracy","comparative politics","political science","international relations","global governance","immigration","human rights","data governance","energy policy","environmental policy","housing policy"],
+    "Law & Justice": ["constitutional law","civil rights law","international law","administrative law","corporate law","criminal justice","environmental law","property law","legal technology","social justice","racial equity","gender equity"],
+    "Science & Tech": ["mathematics","physics","chemistry","biology & genetics","computer science","artificial intelligence","neuroscience","quantitative methods","biostatistics","cybersecurity","digital media"],
+    "Health": ["public health","global health","health policy","infectious disease","epidemiology","mental health","nutrition & health","environmental health"],
+    "Arts & Culture": ["arts & humanities","cultural heritage","linguistics","theology","religion","religious history","Hebrew Bible","history","philosophy","anthropology","sociology"],
+    "Design & Environment": ["ecology","climate change","architecture","urban design","landscape architecture","urban planning","design research","sustainability","water resources","infrastructure","historic preservation"],
+    "Society & Economics": ["economics","inequality","leadership","psychology","learning sciences","education policy","entrepreneurship","finance","marketing","behavioral economics","organizational behavior","operations management","strategy","economic development","urban economics","community development","global development","public finance","curriculum design","qualitative research","negotiation","accounting"],
+    "Cross-cutting": ["interdisciplinary studies","ethics"],
+  }).flatMap(([cl, labels]) => labels.map((l) => [l, cl]))
+);
+
+function getLabelColor(label: string) {
+  return CLUSTER_COLORS[LABEL_CLUSTER[label] ?? "Cross-cutting"] ?? "#94a3b8";
+}
 
 function SchoolBadge({ school }: { school: string }) {
   const c = SCHOOL_COLORS[school] ?? { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300" };
@@ -148,6 +176,8 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
   const [selected, setSelected] = useState<Course | null>(null);
   const [page, setPage] = useState(1);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [view, setView] = useState<"grid" | "bubbles">("grid");
+  const [labelFilter, setLabelFilter] = useState("");
 
   const allTypes = useMemo(() => Array.from(new Set(courses.map((c) => c.type).filter(Boolean))).sort(), [courses]);
 
@@ -158,20 +188,29 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
       if (school && c.school !== school) return false;
       if (semester && c.semester !== semester) return false;
       if (courseType && c.type !== courseType) return false;
+      if (labelFilter && !c.keywordList?.includes(labelFilter)) return false;
       if (q) {
         const hay = [c.name, c.instructor, c.description, c.keywords, c.department].join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     }).sort((a, b) => a.school.localeCompare(b.school) || a.name.localeCompare(b.name));
-  }, [courses, query, school, semester, courseType, showSavedOnly, savedIds]);
+  }, [courses, query, school, semester, courseType, showSavedOnly, savedIds, labelFilter]);
+
+  const labelFreqs = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of filtered) {
+      for (const kw of c.keywordList ?? []) counts.set(kw, (counts.get(kw) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [filtered]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const resetPage = useCallback(() => setPage(1), []);
 
-  const clearFilters = () => { setQuery(""); setSchool(""); setSemester(""); setCourseType(""); setShowSavedOnly(false); setPage(1); };
-  const hasFilters = query || school || semester || courseType || showSavedOnly;
+  const clearFilters = () => { setQuery(""); setSchool(""); setSemester(""); setCourseType(""); setShowSavedOnly(false); setLabelFilter(""); setPage(1); };
+  const hasFilters = query || school || semester || courseType || showSavedOnly || labelFilter;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -218,11 +257,56 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-gray-500">{filtered.length.toLocaleString()} course{filtered.length !== 1 ? "s" : ""}{hasFilters ? " matching" : " total"}</p>
-        {totalPages > 1 && <p className="text-xs text-gray-400">Page {page} of {totalPages}</p>}
+        <p className="text-sm text-gray-500">
+          {filtered.length.toLocaleString()} course{filtered.length !== 1 ? "s" : ""}{hasFilters ? " matching" : " total"}
+          {labelFilter && <span className="ml-2 text-xs px-2 py-0.5 rounded-full text-white inline-flex items-center gap-1" style={{ background: getLabelColor(labelFilter) }}>{labelFilter} <button onClick={() => { setLabelFilter(""); setPage(1); }}><X className="w-3 h-3" /></button></span>}
+        </p>
+        <div className="flex items-center gap-1">
+          {view === "grid" && totalPages > 1 && <span className="text-xs text-gray-400 mr-2">Page {page} of {totalPages}</span>}
+          <button onClick={() => setView("grid")}
+            className={`p-1.5 rounded-lg transition-colors ${view === "grid" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}
+            title="Grid view"><LayoutGrid className="w-4 h-4" /></button>
+          <button onClick={() => setView("bubbles")}
+            className={`p-1.5 rounded-lg transition-colors ${view === "bubbles" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}
+            title="Topic bubbles"><Tag className="w-4 h-4" /></button>
+        </div>
       </div>
 
-      {visible.length === 0 ? (
+      {view === "bubbles" ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <p className="text-xs text-gray-400 mb-4">Click a topic to filter courses by it</p>
+          {labelFreqs.length === 0 ? (
+            <div className="text-center py-10 text-gray-400">
+              <Tag className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No topics found</p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {labelFreqs.map(([label, count]) => {
+                const color = getLabelColor(label);
+                const active = labelFilter === label;
+                const maxCount = labelFreqs[0][1];
+                const minSize = 12; const maxSize = 18;
+                const fontSize = minSize + ((count / maxCount) * (maxSize - minSize));
+                return (
+                  <button key={label} onClick={() => { setLabelFilter(active ? "" : label); setPage(1); setView("grid"); }}
+                    className="rounded-full px-3 py-1.5 transition-all hover:scale-105"
+                    style={{
+                      fontSize: `${fontSize}px`,
+                      background: active ? color : `${color}18`,
+                      color: active ? "#fff" : color,
+                      border: `1.5px solid ${color}40`,
+                      fontWeight: active ? 700 : 500,
+                      boxShadow: active ? `0 2px 8px ${color}44` : "none",
+                    }}>
+                    {label} <span style={{ opacity: 0.7, fontSize: "0.75em" }}>×{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="font-medium">No courses found</p>
@@ -265,7 +349,7 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
         </div>
       )}
 
-      {totalPages > 1 && (
+      {view === "grid" && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-8">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
             className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl disabled:opacity-40 hover:border-gray-400 transition-colors">
