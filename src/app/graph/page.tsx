@@ -12,6 +12,7 @@ export interface CourseSlim {
   semester: string;
   year: string;
   credits: string;
+  url: string;
   keywordList: string[];
 }
 
@@ -42,7 +43,7 @@ export default async function Page() {
   const courseSlim: CourseSlim[] = courses.map((c) => ({
     id: c.id, name: c.name, school: c.school,
     semester: c.semester, year: c.year, credits: c.credits,
-    keywordList: c.keywordList,
+    url: c.url, keywordList: c.keywordList,
   }));
   const allLabels = Array.from(new Set(courses.flatMap((c) => c.keywordList))).sort();
   const coOccurrence = buildCoOccurrence(courses);

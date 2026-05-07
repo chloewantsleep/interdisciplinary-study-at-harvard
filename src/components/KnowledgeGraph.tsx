@@ -239,7 +239,7 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
 
   // ── Draw ──
   function actualDraw() {
-    const canvas=canvasRef.current; if(!canvas) return;
+    const canvas=canvasRef.current as HTMLCanvasElement; if(!canvas) return;
     const ctx=canvas.getContext("2d"); if(!ctx) return;
     const {x:tx,y:ty,scale}=transformRef.current;
     const nodes=nodesRef.current, links=linksRef.current;
@@ -349,7 +349,7 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
 
   // ── Mouse interactions ──
   useEffect(()=>{
-    const canvas=canvasRef.current; if(!canvas) return;
+    const canvas=canvasRef.current as HTMLCanvasElement; if(!canvas) return;
     function toW(cx:number,cy:number){const t=transformRef.current;return{x:(cx-t.x)/t.scale,y:(cy-t.y)/t.scale};}
     function hit(wx:number,wy:number):SimNode|null{for(const n of nodesRef.current){const r=nodeR(n);if((n.x-wx)**2+(n.y-wy)**2<=r*r)return n;}return null;}
     let drag:SimNode|null=null, pan=false, downX=0, downY=0, downOnNode=false;
