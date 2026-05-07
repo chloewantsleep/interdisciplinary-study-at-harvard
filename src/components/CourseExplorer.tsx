@@ -2,11 +2,14 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, X, BookOpen, ChevronDown, ExternalLink, CheckCircle, LayoutGrid, Tag } from "lucide-react";
+import { Search, X, BookOpen, ChevronDown, ExternalLink, CheckCircle, LayoutGrid, Network } from "lucide-react";
 import type { Course } from "@/lib/types";
 import { SCHOOL_COLORS, SCHOOL_FULL } from "@/lib/types";
 import { useSaved } from "@/lib/useSaved";
 import { useTaken } from "@/lib/useTaken";
+import dynamic from "next/dynamic";
+
+const ExploreGraph = dynamic(() => import("./ExploreGraph"), { ssr: false });
 
 const SEMESTERS = ["Fall", "Spring", "Summer", "Winter", "Fall-Spring", "Fall-Winter", "Winter-Spring"];
 const PAGE_SIZE = 30;
@@ -197,13 +200,6 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
     }).sort((a, b) => a.school.localeCompare(b.school) || a.name.localeCompare(b.name));
   }, [courses, query, school, semester, courseType, showSavedOnly, savedIds, labelFilter]);
 
-  const labelFreqs = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of filtered) {
-      for (const kw of c.keywordList ?? []) counts.set(kw, (counts.get(kw) ?? 0) + 1);
-    }
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [filtered]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -268,44 +264,15 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
             title="Grid view"><LayoutGrid className="w-4 h-4" /></button>
           <button onClick={() => setView("bubbles")}
             className={`p-1.5 rounded-lg transition-colors ${view === "bubbles" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}
-            title="Topic bubbles"><Tag className="w-4 h-4" /></button>
+            title="Topic graph"><Network className="w-4 h-4" /></button>
         </div>
       </div>
 
       {view === "bubbles" ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <p className="text-xs text-gray-400 mb-4">Click a topic to filter courses by it</p>
-          {labelFreqs.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <Tag className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No topics found</p>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {labelFreqs.map(([label, count]) => {
-                const color = getLabelColor(label);
-                const active = labelFilter === label;
-                const maxCount = labelFreqs[0][1];
-                const minSize = 12; const maxSize = 18;
-                const fontSize = minSize + ((count / maxCount) * (maxSize - minSize));
-                return (
-                  <button key={label} onClick={() => { setLabelFilter(active ? "" : label); setPage(1); setView("grid"); }}
-                    className="rounded-full px-3 py-1.5 transition-all hover:scale-105"
-                    style={{
-                      fontSize: `${fontSize}px`,
-                      background: active ? color : `${color}18`,
-                      color: active ? "#fff" : color,
-                      border: `1.5px solid ${color}40`,
-                      fontWeight: active ? 700 : 500,
-                      boxShadow: active ? `0 2px 8px ${color}44` : "none",
-                    }}>
-                    {label} <span style={{ opacity: 0.7, fontSize: "0.75em" }}>×{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <ExploreGraph
+          courses={filtered}
+          onSelectLabel={(label) => { setLabelFilter(label); setPage(1); setView("grid"); }}
+        />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
