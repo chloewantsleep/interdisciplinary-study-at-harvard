@@ -639,8 +639,17 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
           </div>
         )}
         {activeLabels.length>0&&selectedLabels.size===0&&(
-          <div className="absolute bottom-4 left-4 bg-white/90 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-400 shadow-sm">
-            Click nodes to select · scroll to zoom · drag to pan
+          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+            <p className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Color = cluster</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+              {Object.entries(CLUSTERS).map(([name,{color}])=>(
+                <div key={name} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:color}}/>
+                  <span className="text-xs text-gray-600 whitespace-nowrap">{name}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-2 border-t border-gray-100 pt-1.5">Click nodes to select · scroll to zoom · drag to pan</p>
           </div>
         )}
         {selectedLabels.size>0&&(
