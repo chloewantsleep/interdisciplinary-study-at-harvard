@@ -404,11 +404,92 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
       const t=transformRef.current;
       t.x=mx-f*(mx-t.x);t.y=my-f*(my-t.y);t.scale=Math.max(0.15,Math.min(6,t.scale*f));
     }
+    // Touch support
+    let lastTouchDist=0, lastTouchX=0, lastTouchY=0, touchMoved=false;
+    function onTouchStart(e:TouchEvent){
+      e.preventDefault();
+      if(e.touches.length===1){
+        const t=e.touches[0];
+        const rect=canvas.getBoundingClientRect();
+        const{x:wx,y:wy}=toW(t.clientX-rect.left,t.clientY-rect.top);
+        lastTouchX=t.clientX; lastTouchY=t.clientY; touchMoved=false;
+        const h=hit(wx,wy); downOnNode=!!h;
+        if(h){drag=h;}else pan=true;
+      } else if(e.touches.length===2){
+        drag=null; pan=false;
+        const dx=e.touches[0].clientX-e.touches[1].clientX;
+        const dy=e.touches[0].clientY-e.touches[1].clientY;
+        lastTouchDist=Math.sqrt(dx*dx+dy*dy);
+        lastTouchX=(e.touches[0].clientX+e.touches[1].clientX)/2;
+        lastTouchY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+      }
+    }
+    function onTouchMove(e:TouchEvent){
+      e.preventDefault();
+      if(e.touches.length===1){
+        const t=e.touches[0];
+        const rect=canvas.getBoundingClientRect();
+        const{x:wx,y:wy}=toW(t.clientX-rect.left,t.clientY-rect.top);
+        if(drag){drag.fx=wx;drag.fy=wy;simRef.current?.reheat();}
+        else if(pan){transformRef.current.x+=t.clientX-lastTouchX;transformRef.current.y+=t.clientY-lastTouchY;}
+        if(Math.hypot(t.clientX-lastTouchX,t.clientY-lastTouchY)>4) touchMoved=true;
+        lastTouchX=t.clientX; lastTouchY=t.clientY;
+        hovRef.current=hit(wx,wy); setHovNode(hovRef.current);
+      } else if(e.touches.length===2){
+        const dx=e.touches[0].clientX-e.touches[1].clientX;
+        const dy=e.touches[0].clientY-e.touches[1].clientY;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        const mx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+        const my=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        const rect=canvas.getBoundingClientRect();
+        const tr=transformRef.current;
+        const f=dist/(lastTouchDist||dist);
+        const newScale=Math.max(0.15,Math.min(6,tr.scale*f));
+        tr.x=(mx-rect.left)-((mx-rect.left)-tr.x)*(newScale/tr.scale);
+        tr.y=(my-rect.top)-((my-rect.top)-tr.y)*(newScale/tr.scale);
+        tr.scale=newScale;
+        lastTouchDist=dist; lastTouchX=mx; lastTouchY=my; touchMoved=true;
+      }
+    }
+    function onTouchEnd(e:TouchEvent){
+      if(!touchMoved && e.changedTouches.length===1){
+        const t=e.changedTouches[0];
+        const rect=canvas.getBoundingClientRect();
+        const{x:wx,y:wy}=toW(t.clientX-rect.left,t.clientY-rect.top);
+        const node=hit(wx,wy);
+        if(node){
+          const id=node.id;
+          setSelectedLabels(prev=>{
+            const next=new Set(prev);
+            next.has(id)?next.delete(id):next.add(id);
+            selectedRef.current=next;
+            if(next.size>0) setMobileRight(true);
+            return next;
+          });
+        } else {
+          setSelectedLabels(new Set());
+          selectedRef.current=new Set();
+        }
+      }
+      if(drag){drag.fx=null;drag.fy=null;drag=null;}
+      pan=false;
+    }
     canvas.addEventListener("mousemove",onMove);
     canvas.addEventListener("mousedown",onDown);
     canvas.addEventListener("mouseup",onUp);
     canvas.addEventListener("wheel",onWheel,{passive:false});
-    return()=>{canvas.removeEventListener("mousemove",onMove);canvas.removeEventListener("mousedown",onDown);canvas.removeEventListener("mouseup",onUp);canvas.removeEventListener("wheel",onWheel);};
+    canvas.addEventListener("touchstart",onTouchStart,{passive:false});
+    canvas.addEventListener("touchmove",onTouchMove,{passive:false});
+    canvas.addEventListener("touchend",onTouchEnd);
+    return()=>{
+      canvas.removeEventListener("mousemove",onMove);
+      canvas.removeEventListener("mousedown",onDown);
+      canvas.removeEventListener("mouseup",onUp);
+      canvas.removeEventListener("wheel",onWheel);
+      canvas.removeEventListener("touchstart",onTouchStart);
+      canvas.removeEventListener("touchmove",onTouchMove);
+      canvas.removeEventListener("touchend",onTouchEnd);
+    };
   },[]);
 
   // ── AI summary ──
