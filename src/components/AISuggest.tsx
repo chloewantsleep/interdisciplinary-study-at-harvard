@@ -16,6 +16,7 @@ export default function AISuggest() {
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [input, setInput] = useState("");
+  const [jobTarget, setJobTarget] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +46,7 @@ export default function AISuggest() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userInput: input,
+          jobTarget: jobTarget.trim(),
           savedCourseIds: Array.from(savedIds),
           apiKey,
         }),
@@ -138,12 +140,24 @@ export default function AISuggest() {
         </div>
 
         <textarea
-          rows={5}
+          rows={4}
           placeholder="e.g. I'm an HKS student focused on climate policy. I'd like to understand the engineering and design side of sustainable infrastructure..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 resize-none"
         />
+
+        {/* Job target */}
+        <div className="mt-3">
+          <label className="text-xs font-medium text-gray-500 mb-1 block">Target role or job posting <span className="text-gray-400 font-normal">(optional)</span></label>
+          <input
+            type="text"
+            placeholder="Paste a job URL or describe the role, e.g. Policy analyst at the UN"
+            value={jobTarget}
+            onChange={(e) => setJobTarget(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400"
+          />
+        </div>
 
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-1.5 text-xs text-gray-400">

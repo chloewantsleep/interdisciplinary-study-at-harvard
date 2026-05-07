@@ -203,6 +203,9 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
   const [sumLoading,  setSumLoading]  = useState(false);
   const [sumError,    setSumError]    = useState("");
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [takenOpen,   setTakenOpen]   = useState(true);
+  const [savedOpen,   setSavedOpen]   = useState(true);
+  const [savedQ,      setSavedQ]      = useState("");
 
   // Keep selectedRef in sync for the draw loop
   useEffect(()=>{ selectedRef.current = selectedLabels; }, [selectedLabels]);
@@ -423,6 +426,7 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
 
   const labelSuggestions=query.length>=1?allLabels.filter(l=>l.toLowerCase().includes(query.toLowerCase())&&!labelInfo.has(l)).slice(0,6):[];
   const courseSuggestions=courseQ.length>=2?courseSlim.filter(c=>c.name.toLowerCase().includes(courseQ.toLowerCase())&&!takenIds.has(c.id)).slice(0,6):[];
+  const savedSuggestions=savedQ.length>=2?courseSlim.filter(c=>c.name.toLowerCase().includes(savedQ.toLowerCase())&&!savedIds.has(c.id)).slice(0,6):[];
   const takenCount=activeLabels.filter(l=>labelInfo.get(l)!.takenCount>0).length;
   const savedCount=activeLabels.filter(l=>labelInfo.get(l)!.savedCount>0&&labelInfo.get(l)!.takenCount===0).length;
 
@@ -452,41 +456,104 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
           </div>
         )}
 
-        {/* Hovered node */}
+        {/* Hovered node — show matching taken/saved courses */}
         {hovNode&&(
           <div className="px-4 py-2.5 border-b border-gray-100 bg-slate-50">
             <p className="text-xs font-semibold text-gray-900">{hovNode.id}</p>
             <p className="text-xs text-gray-400">{hovNode.cluster}</p>
+            {(()=>{
+              const tc=takenCourses.filter(c=>c.keywordList.includes(hovNode.id));
+              const sc=savedCourses.filter(c=>c.keywordList.includes(hovNode.id));
+              if(!tc.length&&!sc.length) return null;
+              return(
+                <div className="mt-2 space-y-1">
+                  {tc.map(c=>(
+                    <div key={c.id} className="flex items-start gap-1.5">
+                      <CheckCircle className="w-3 h-3 text-slate-400 shrink-0 mt-0.5"/>
+                      <span className="text-xs text-gray-600 line-clamp-1">{c.name}</span>
+                    </div>
+                  ))}
+                  {sc.map(c=>(
+                    <div key={c.id} className="flex items-start gap-1.5">
+                      <Bookmark className="w-3 h-3 text-blue-400 shrink-0 mt-0.5"/>
+                      <span className="text-xs text-gray-600 line-clamp-1">{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
         <div className="flex-1 overflow-y-auto">
-          {/* Mark course as taken */}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Mark as taken</p>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400"/>
-              <input type="text" placeholder="Search courses..." value={courseQ} onChange={e=>setCourseQ(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200"/>
-            </div>
-            {courseSuggestions.length>0&&(
-              <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white z-10 relative">
-                {courseSuggestions.map(c=>{const col=SCHOOL_COLORS[c.school];return(
-                  <button key={c.id} onClick={()=>{toggleTaken(c.id);setCourseQ("");}}
-                    className="w-full px-3 py-1.5 text-xs text-left hover:bg-slate-50 border-b border-gray-100 last:border-0 flex items-start gap-1.5">
-                    <span className={`font-semibold shrink-0 ${col?.text??"text-gray-600"}`}>{c.school}</span>
-                    <span className="text-gray-700 line-clamp-1">{c.name}</span>
-                  </button>);})}
+          {/* Mark as taken — collapsible */}
+          <div className="border-b border-gray-100">
+            <button onClick={()=>setTakenOpen(v=>!v)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:bg-gray-50 transition-colors">
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-3 h-3"/>Taken ({takenCourses.length})</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${takenOpen?"rotate-180":""}`}/>
+            </button>
+            {takenOpen&&(
+              <div className="px-4 pb-3">
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400"/>
+                  <input type="text" placeholder="Search to add..." value={courseQ} onChange={e=>setCourseQ(e.target.value)}
+                    className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200"/>
+                </div>
+                {courseSuggestions.length>0&&(
+                  <div className="mb-2 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white z-10 relative">
+                    {courseSuggestions.map(c=>{const col=SCHOOL_COLORS[c.school];return(
+                      <button key={c.id} onClick={()=>{toggleTaken(c.id);setCourseQ("");}}
+                        className="w-full px-3 py-1.5 text-xs text-left hover:bg-slate-50 border-b border-gray-100 last:border-0 flex items-start gap-1.5">
+                        <span className={`font-semibold shrink-0 ${col?.text??"text-gray-600"}`}>{c.school}</span>
+                        <span className="text-gray-700 line-clamp-1">{c.name}</span>
+                      </button>);})}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {takenCourses.map(c=>{const col=SCHOOL_COLORS[c.school];return(
+                    <div key={c.id} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                      <CheckCircle className="w-3 h-3 text-slate-400 shrink-0"/>
+                      <div className="flex-1 min-w-0"><span className={`text-xs font-semibold ${col?.text??"text-gray-600"}`}>{c.school} </span><span className="text-xs text-gray-600 truncate">{c.name}</span></div>
+                      <button onClick={()=>toggleTaken(c.id)} className="text-gray-300 hover:text-red-400 shrink-0"><X className="w-3 h-3"/></button>
+                    </div>);})}
+                </div>
               </div>
             )}
-            {takenCourses.length>0&&(
-              <div className="mt-2 space-y-1">
-                {takenCourses.map(c=>{const col=SCHOOL_COLORS[c.school];return(
-                  <div key={c.id} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2.5 py-1.5">
-                    <CheckCircle className="w-3 h-3 text-slate-400 shrink-0"/>
-                    <div className="flex-1 min-w-0"><span className={`text-xs font-semibold ${col?.text??"text-gray-600"}`}>{c.school} </span><span className="text-xs text-gray-600 truncate">{c.name}</span></div>
-                    <button onClick={()=>toggleTaken(c.id)} className="text-gray-300 hover:text-red-400 shrink-0"><X className="w-3 h-3"/></button>
-                  </div>);})}
+          </div>
+
+          {/* Mark as saved — collapsible */}
+          <div className="border-b border-gray-100">
+            <button onClick={()=>setSavedOpen(v=>!v)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:bg-gray-50 transition-colors">
+              <span className="flex items-center gap-1.5"><Bookmark className="w-3 h-3"/>Saved ({savedCourses.length})</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${savedOpen?"rotate-180":""}`}/>
+            </button>
+            {savedOpen&&(
+              <div className="px-4 pb-3">
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400"/>
+                  <input type="text" placeholder="Search to add..." value={savedQ} onChange={e=>setSavedQ(e.target.value)}
+                    className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"/>
+                </div>
+                {savedSuggestions.length>0&&(
+                  <div className="mb-2 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white z-10 relative">
+                    {savedSuggestions.map(c=>{const col=SCHOOL_COLORS[c.school];return(
+                      <button key={c.id} onClick={()=>{toggleSave(c.id);setSavedQ("");}}
+                        className="w-full px-3 py-1.5 text-xs text-left hover:bg-blue-50 border-b border-gray-100 last:border-0 flex items-start gap-1.5">
+                        <span className={`font-semibold shrink-0 ${col?.text??"text-gray-600"}`}>{c.school}</span>
+                        <span className="text-gray-700 line-clamp-1">{c.name}</span>
+                      </button>);})}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {savedCourses.map(c=>{const col=SCHOOL_COLORS[c.school];return(
+                    <div key={c.id} className="flex items-center gap-1.5 bg-blue-50 rounded-lg px-2.5 py-1.5">
+                      <Bookmark className="w-3 h-3 text-blue-400 shrink-0"/>
+                      <div className="flex-1 min-w-0"><span className={`text-xs font-semibold ${col?.text??"text-gray-600"}`}>{c.school} </span><span className="text-xs text-gray-600 truncate">{c.name}</span></div>
+                      <button onClick={()=>toggleSave(c.id)} className="text-gray-300 hover:text-red-400 shrink-0"><X className="w-3 h-3"/></button>
+                    </div>);})}
+                </div>
               </div>
             )}
           </div>
@@ -522,19 +589,6 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
             )}
           </div>
 
-          {/* Saved from Explore */}
-          {savedCourses.length>0&&(
-            <div className="px-4 py-3 border-b border-gray-100">
-              <div className="flex items-center gap-1.5 mb-2"><Bookmark className="w-3 h-3 text-blue-500"/><p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Saved</p></div>
-              <div className="space-y-1">
-                {savedCourses.map(c=>{const col=SCHOOL_COLORS[c.school];return(
-                  <div key={c.id} className="bg-blue-50 rounded-lg px-2.5 py-1.5 text-xs">
-                    <span className={`font-semibold ${col?.text??"text-gray-600"}`}>{c.school} </span><span className="text-gray-600 line-clamp-1">{c.name}</span>
-                  </div>);})}
-              </div>
-            </div>
-          )}
-
           {/* AI Summary */}
           <div className="px-4 py-3">
             <button onClick={()=>setSummaryOpen(v=>!v)}
@@ -566,7 +620,7 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
           {mounted&&takenCourses.length===0&&savedCourses.length===0&&manualLbls.size===0&&(
             <div className="px-4 py-6 text-center">
               <BookOpen className="w-6 h-6 text-gray-300 mx-auto mb-2"/>
-              <p className="text-xs text-gray-400 leading-relaxed">Search taken courses, save from <a href="/explore" className="text-blue-500 underline">Explore</a>, or add topics above.</p>
+              <p className="text-xs text-gray-400 leading-relaxed">Search courses above or add topics to build your graph.</p>
             </div>
           )}
         </div>

@@ -21,12 +21,12 @@ export default function Dashboard({ courses }: { courses: Course[] }) {
 
       {/* Hero */}
       <section>
-        <p className="text-xs font-semibold text-red-700 uppercase tracking-widest mb-2">Harvard University · Cross-Registration</p>
+        <p className="text-xs font-semibold text-red-700 uppercase tracking-widest mb-2">Harvard University · Course Registration</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-3">
-          Discover learning<br />beyond your school.
+          Discover learning beyond your school.
         </h1>
         <p className="text-gray-500 max-w-lg leading-relaxed">
-          Every Harvard school is open to you. Browse 6,042 courses, visualize how disciplines connect through shared topic labels, and get AI-powered recommendations.
+          Browse 6,042 courses across 8 Harvard Schools, visualize your interdisciplinary journey, and get AI-powered recommendations for courses.
         </p>
       </section>
 

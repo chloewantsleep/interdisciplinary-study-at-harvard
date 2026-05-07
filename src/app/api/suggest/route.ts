@@ -4,8 +4,9 @@ import path from "path";
 import type { Course } from "@/lib/types";
 
 export async function POST(req: Request) {
-  const { userInput, savedCourseIds, apiKey } = await req.json() as {
+  const { userInput, jobTarget, savedCourseIds, apiKey } = await req.json() as {
     userInput: string;
+    jobTarget?: string;
     savedCourseIds: string[];
     apiKey: string;
   };
@@ -51,6 +52,26 @@ export async function POST(req: Request) {
     candidateCourses.push(...list.slice(0, 10));
   }
 
+  // Fetch job listing content if a URL was provided
+  let jobContext = "";
+  if (jobTarget) {
+    const isUrl = jobTarget.startsWith("http://") || jobTarget.startsWith("https://");
+    if (isUrl) {
+      try {
+        const res = await fetch(jobTarget, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(5000) });
+        const html = await res.text();
+        const text = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+          .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 2500);
+        jobContext = `\n\nTarget job listing (fetched from ${jobTarget}):\n${text}`;
+      } catch {
+        jobContext = `\n\nTarget role the student is interested in:\n${jobTarget}`;
+      }
+    } else {
+      jobContext = `\n\nTarget role the student is interested in:\n${jobTarget}`;
+    }
+  }
+
   // If we have saved courses, add context about them
   const saved = courses.filter((c) => savedCourseIds.includes(c.id)).slice(0, 10);
   const savedContext = saved.length > 0
@@ -65,6 +86,7 @@ export async function POST(req: Request) {
 
 Student's background and goals:
 ${userInput}
+${jobContext}
 ${savedContext}
 
 Available courses (from various Harvard schools — FAS, GSD, HBS, HDS, HGSE, HKS, HLS, HSPH):

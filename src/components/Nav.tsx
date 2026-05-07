@@ -24,8 +24,8 @@ export default function Nav() {
             <div className="w-7 h-7 rounded flex items-center justify-center text-white text-xs font-black" style={{ background: "#A51C30" }}>
               H
             </div>
-            <span className="text-sm font-semibold text-gray-900">my.harvard</span>
-            <span className="hidden sm:block text-xs text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">Cross-Registration</span>
+            <span className="text-sm font-semibold text-gray-900">alpha.my.harvard</span>
+            <span className="hidden sm:block text-xs text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">Course Registration</span>
           </Link>
 
           {/* Nav */}

@@ -163,7 +163,7 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
         if (!hay.includes(q)) return false;
       }
       return true;
-    });
+    }).sort((a, b) => a.school.localeCompare(b.school) || a.name.localeCompare(b.name));
   }, [courses, query, school, semester, courseType, showSavedOnly, savedIds]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
