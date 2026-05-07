@@ -429,12 +429,25 @@ export default function ExploreGraph({ courses, onSelectLabel }: Props) {
 
       {/* Legend */}
       {!focusedLabel && (
-        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
-          {Object.entries(CLUSTERS).map(([name, { color }]) => (
-            <div key={name} className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} title={name} />
-          ))}
-          <span className="text-xs text-gray-300 mx-1">|</span>
-          <span className="text-xs text-gray-400">scroll · drag</span>
+        <div className="absolute bottom-3 right-3 group">
+          {/* Expanded panel on hover */}
+          <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block bg-white border border-gray-200 rounded-xl shadow-lg px-3 py-2.5 min-w-[180px]">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Color = cluster</p>
+            {Object.entries(CLUSTERS).map(([name, { color }]) => (
+              <div key={name} className="flex items-center gap-2 py-0.5">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                <span className="text-xs text-gray-700">{name}</span>
+              </div>
+            ))}
+          </div>
+          {/* Pill */}
+          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 shadow-sm cursor-default">
+            {Object.entries(CLUSTERS).map(([name, { color }]) => (
+              <div key={name} className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+            ))}
+            <span className="text-xs text-gray-300 mx-1">|</span>
+            <span className="text-xs text-gray-400">scroll · drag</span>
+          </div>
         </div>
       )}
     </div>
