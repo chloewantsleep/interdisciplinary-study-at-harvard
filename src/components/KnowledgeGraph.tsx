@@ -119,14 +119,14 @@ function buildSim(nodes: SimNode[], links: SimLink[], w: number, h: number) {
 }
 
 // ─── Right panel: course match card ──────────────────────────────────────────
-function MatchCard({ course, selectedLabels, isSaved, isTaken, onSave, onTaken }: {
+function MatchCard({ course, selectedLabels, isSaved, isTaken, onSave, onTaken, onOpen }: {
   course: MatchCourse; selectedLabels: Set<string>;
-  isSaved: boolean; isTaken: boolean; onSave: ()=>void; onTaken: ()=>void;
+  isSaved: boolean; isTaken: boolean; onSave: ()=>void; onTaken: ()=>void; onOpen: ()=>void;
 }) {
   const col = SCHOOL_COLORS[course.school];
   const pct = Math.round((course.matchCount / selectedLabels.size) * 100);
   return (
-    <div className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+    <div onClick={onOpen} className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold border ${col?.bg} ${col?.text} ${col?.border}`}>
           {course.school}
@@ -152,16 +152,16 @@ function MatchCard({ course, selectedLabels, isSaved, isTaken, onSave, onTaken }
           {course.credits&&<span>· {course.credits} cr</span>}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onTaken} title="Mark taken"
+          <button onClick={(e)=>{e.stopPropagation();onTaken();}} title="Mark taken"
             className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isTaken?"bg-slate-200 text-slate-600":"bg-gray-100 text-gray-300 hover:text-slate-500"}`}>
             <CheckCircle className="w-3.5 h-3.5"/>
           </button>
-          <button onClick={onSave} title="Save"
+          <button onClick={(e)=>{e.stopPropagation();onSave();}} title="Save"
             className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSaved?"bg-red-100 text-red-600":"bg-gray-100 text-gray-300 hover:text-red-500"}`}>
             <BookOpen className="w-3.5 h-3.5"/>
           </button>
           {course.url&&(
-            <a href={course.url} target="_blank" rel="noopener noreferrer"
+            <a href={course.url} target="_blank" rel="noopener noreferrer" onClick={(e)=>e.stopPropagation()}
               className="w-6 h-6 rounded bg-gray-100 text-gray-300 hover:text-blue-500 flex items-center justify-center transition-colors">
               <ExternalLink className="w-3.5 h-3.5"/>
             </a>
@@ -197,6 +197,7 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
   const [hovNode,     setHovNode]     = useState<SimNode|null>(null);
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
   const [semFilter,   setSemFilter]   = useState("");
+  const [openCourse,  setOpenCourse]  = useState<MatchCourse|null>(null);
   // AI summary
   const [apiKey,      setApiKey]      = useState("");
   const [summary,     setSummary]     = useState("");
@@ -702,9 +703,66 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
               matchingCourses.map(c=>(
                 <MatchCard key={c.id} course={c} selectedLabels={selectedLabels}
                   isSaved={isSaved(c.id)} isTaken={isTaken(c.id)}
-                  onSave={()=>toggleSave(c.id)} onTaken={()=>toggleTaken(c.id)}/>
+                  onSave={()=>toggleSave(c.id)} onTaken={()=>toggleTaken(c.id)}
+                  onOpen={()=>setOpenCourse(c)}/>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Course detail modal */}
+      {openCourse&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={()=>setOpenCourse(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-start justify-between gap-4 rounded-t-2xl">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${SCHOOL_COLORS[openCourse.school]?.bg} ${SCHOOL_COLORS[openCourse.school]?.text} ${SCHOOL_COLORS[openCourse.school]?.border}`}>{openCourse.school}</span>
+                  <span className="text-xs text-gray-400">{openCourse.id}</span>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900 leading-tight">{openCourse.name}</h2>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={()=>toggleTaken(openCourse.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isTaken(openCourse.id)?"bg-slate-200 text-slate-700":"bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                  <CheckCircle className="w-3.5 h-3.5"/>{isTaken(openCourse.id)?"Taken":"Mark taken"}
+                </button>
+                <button onClick={()=>toggleSave(openCourse.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isSaved(openCourse.id)?"bg-red-100 text-red-700":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                  <BookOpen className="w-3.5 h-3.5"/>{isSaved(openCourse.id)?"Saved":"Save"}
+                </button>
+                <button onClick={()=>setOpenCourse(null)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                  <X className="w-5 h-5 text-gray-500"/>
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[["Semester",[openCourse.semester,openCourse.year].filter(Boolean).join(" ")||"—"],["Credits",openCourse.credits||"—"]].map(([label,value])=>(
+                  <div key={label} className="bg-gray-50 rounded-xl p-3">
+                    <div className="text-xs text-gray-400 mb-0.5">{label}</div>
+                    <div className="font-medium text-gray-900">{value}</div>
+                  </div>
+                ))}
+              </div>
+              {openCourse.keywordList?.length>0&&(
+                <div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Topic Labels</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {openCourse.keywordList.map(kw=>(
+                      <span key={kw} className={`px-2 py-0.5 text-xs rounded-full ${selectedLabels.has(kw)?"bg-blue-100 text-blue-700 font-medium":"bg-gray-100 text-gray-600"}`}>{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {openCourse.url&&(
+                <a href={openCourse.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm font-medium hover:underline" style={{color:"#A51C30"}}>
+                  <ExternalLink className="w-4 h-4"/> View on Harvard Course Catalog
+                </a>
+              )}
+            </div>
           </div>
         </div>
       )}

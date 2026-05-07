@@ -429,7 +429,7 @@ export default function ExploreGraph({ courses, onSelectLabel }: Props) {
 
       {/* Legend */}
       {!focusedLabel && (
-        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 shadow-sm pointer-events-none">
+        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
           {Object.entries(CLUSTERS).map(([name, { color }]) => (
             <div key={name} className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} title={name} />
           ))}
