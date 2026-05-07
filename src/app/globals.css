@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Force light mode regardless of OS preference.
+   Tailwind v4 preflight sets color-scheme: dark in dark mode,
+   which causes form elements and scrollbars to render dark.
+   This override must come after the @import. */
+html {
+  color-scheme: only light;
+}
+
+body {
+  background: #f9fafb;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
