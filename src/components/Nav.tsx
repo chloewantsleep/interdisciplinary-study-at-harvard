@@ -25,7 +25,6 @@ export default function Nav() {
               H
             </div>
             <span className="text-sm font-semibold text-gray-900">alpha.my.harvard</span>
-            <span className="hidden sm:block text-xs text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">Course Registration</span>
           </Link>
 
           {/* Nav */}
