@@ -179,7 +179,7 @@ export default function CourseExplorer({ courses }: { courses: Course[] }) {
   const [selected, setSelected] = useState<Course | null>(null);
   const [page, setPage] = useState(1);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
-  const [view, setView] = useState<"grid" | "bubbles">("grid");
+  const [view, setView] = useState<"grid" | "bubbles">("bubbles");
   const [labelFilter, setLabelFilter] = useState("");
 
   const allTypes = useMemo(() => Array.from(new Set(courses.map((c) => c.type).filter(Boolean))).sort(), [courses]);
