@@ -198,6 +198,8 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
   const [semFilter,   setSemFilter]   = useState("");
   const [openCourse,  setOpenCourse]  = useState<MatchCourse|null>(null);
+  const [mobileLeft,  setMobileLeft]  = useState(false);
+  const [mobileRight, setMobileRight] = useState(false);
   // AI summary
   const [apiKey,      setApiKey]      = useState("");
   const [summary,     setSummary]     = useState("");
@@ -383,6 +385,7 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
             const next=new Set(prev);
             next.has(id)?next.delete(id):next.add(id);
             selectedRef.current=next;
+            if(next.size>0) setMobileRight(true);
             return next;
           });
         } else if(!downOnNode){
@@ -432,10 +435,19 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
   const savedCount=activeLabels.filter(l=>labelInfo.get(l)!.savedCount>0&&labelInfo.get(l)!.takenCount===0).length;
 
   return (
-    <div className="flex h-[calc(100vh-56px)] bg-white">
+    <div className="flex h-[calc(100vh-56px)] bg-white relative overflow-hidden">
+
+      {/* Mobile backdrops */}
+      {mobileLeft&&<div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={()=>setMobileLeft(false)}/>}
+      {mobileRight&&<div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={()=>setMobileRight(false)}/>}
 
       {/* ── LEFT SIDEBAR ── */}
-      <div className="w-72 border-r border-gray-200 flex flex-col shrink-0 overflow-hidden">
+      <div className={`
+        fixed md:relative inset-y-0 left-0 z-40 md:z-auto
+        w-72 border-r border-gray-200 flex flex-col shrink-0 overflow-hidden bg-white
+        transition-transform duration-300 ease-in-out
+        ${mobileLeft ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
+      `}>
         <div className="px-4 py-3.5 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900">Knowledge Graph</h2>
           <p className="text-xs text-gray-400 mt-0.5">Click nodes to select · find matching courses →</p>
@@ -630,6 +642,21 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
       {/* ── CANVAS ── */}
       <div ref={containerRef} className="flex-1 relative bg-slate-50 min-w-0">
         <canvas ref={canvasRef} width={dims.w} height={dims.h} className="absolute inset-0" style={{cursor:"grab"}}/>
+
+        {/* Mobile FABs */}
+        <div className="absolute top-3 left-3 flex gap-2 md:hidden">
+          <button onClick={()=>setMobileLeft(v=>!v)}
+            className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 shadow-sm">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7"/></svg>
+            Courses
+          </button>
+          {selectedLabels.size>0&&(
+            <button onClick={()=>setMobileRight(v=>!v)}
+              className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium shadow-sm" style={{color:"#A51C30",borderColor:"#A51C3040"}}>
+              {matchingCourses.length} matches
+            </button>
+          )}
+        </div>
         {mounted&&activeLabels.length===0&&(
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center max-w-xs">
@@ -671,7 +698,12 @@ export default function KnowledgeGraph({ data }: { data: GraphPageData }) {
 
       {/* ── RIGHT PANEL: COURSE MATCHES ── */}
       {selectedLabels.size>0&&(
-        <div className="w-80 border-l border-gray-200 flex flex-col shrink-0 bg-white">
+        <div className={`
+          fixed md:relative inset-y-0 right-0 z-40 md:z-auto
+          w-full max-w-sm md:w-80 border-l border-gray-200 flex flex-col shrink-0 bg-white
+          transition-transform duration-300 ease-in-out
+          ${mobileRight ? "translate-x-0" : "translate-x-full"} md:translate-x-0
+        `}>
           {/* Header */}
           <div className="px-4 py-3.5 border-b border-gray-100">
             <div className="flex items-center justify-between mb-2">

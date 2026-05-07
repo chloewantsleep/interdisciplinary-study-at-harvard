@@ -161,7 +161,8 @@ export default function ExploreGraph({ courses, onSelectLabel }: Props) {
     const el = wrapRef.current; if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width } = entry.contentRect;
-      setDims({ w: width, h: Math.max(420, Math.min(640, width * 0.65)) });
+      const isMobile = width < 640;
+      setDims({ w: width, h: isMobile ? Math.min(500, window.innerHeight - 160) : Math.max(420, Math.min(640, width * 0.65)) });
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -371,15 +372,95 @@ export default function ExploreGraph({ courses, onSelectLabel }: Props) {
       t.scale = newScale;
     }
 
+    // Touch support for iOS
+    let lastTouchDist = 0;
+    let lastTouchX = 0, lastTouchY = 0;
+
+    function onTouchStart(e: TouchEvent) {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const { x: wx, y: wy } = toW(t.clientX - rect.left, t.clientY - rect.top);
+        lastTouchX = t.clientX; lastTouchY = t.clientY; moved = false;
+        drag = hit(wx, wy);
+        if (!drag) pan = true;
+      } else if (e.touches.length === 2) {
+        drag = null; pan = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+        lastTouchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        lastTouchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const { x: wx, y: wy } = toW(t.clientX - rect.left, t.clientY - rect.top);
+        if (drag) { drag.fx = wx; drag.fy = wy; simRef.current?.reheat(); moved = true; }
+        else if (pan) {
+          transformRef.current.x += t.clientX - lastTouchX;
+          transformRef.current.y += t.clientY - lastTouchY;
+          moved = true;
+        }
+        lastTouchX = t.clientX; lastTouchY = t.clientY;
+        const h = hit(wx, wy); hovRef.current = h; setHovNode(h);
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const rect = canvas.getBoundingClientRect();
+        const tr = transformRef.current;
+        const factor = dist / (lastTouchDist || dist);
+        const newScale = Math.max(0.3, Math.min(4, tr.scale * factor));
+        tr.x = (mx - rect.left) - ((mx - rect.left) - tr.x) * (newScale / tr.scale);
+        tr.y = (my - rect.top) - ((my - rect.top) - tr.y) * (newScale / tr.scale);
+        tr.scale = newScale;
+        lastTouchDist = dist; lastTouchX = mx; lastTouchY = my; moved = true;
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const wasDrag = drag, didMove = moved;
+      if (wasDrag && wasDrag.id !== focusedLabelRef.current) { wasDrag.fx = null; wasDrag.fy = null; }
+      drag = null; pan = false;
+      if (!didMove && e.changedTouches.length === 1) {
+        const t = e.changedTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        const { x: wx, y: wy } = toW(t.clientX - rect.left, t.clientY - rect.top);
+        const node = hit(wx, wy);
+        if (node) {
+          if (focusedLabelRef.current) {
+            if (node.id === focusedLabelRef.current) onSelectLabelRef.current(node.id);
+            else setFocusedLabel(node.id);
+          } else {
+            setFocusedLabel(node.id);
+          }
+        }
+      }
+    }
+
     canvas.addEventListener("mousemove", onMove);
     canvas.addEventListener("mousedown", onDown);
     canvas.addEventListener("mouseup", onUp);
     canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd);
     return () => {
       canvas.removeEventListener("mousemove", onMove);
       canvas.removeEventListener("mousedown", onDown);
       canvas.removeEventListener("mouseup", onUp);
       canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
     };
   }, []);
 
